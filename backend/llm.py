@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-
+from config import TOP_K, MAX_PAGE_CHARS
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 
@@ -106,22 +106,22 @@ def ask_llm(question, pages):
     relevant_pages = retrieve(
         question,
         pages,
-        top_k=6
+        top_k=TOP_K
     )
 
     context = []
 
     for page in relevant_pages:
 
-        page_text = page["text"][:6000]
+        page_text = page["text"][:MAX_PAGE_CHARS]
 
         context.append(
             f"""
-Source:
-{page['url']}
+    Source:
+    {page['url']}
 
-{page_text}
-"""
+    {page_text}
+    """
         )
 
     website_text = "\n\n".join(context)

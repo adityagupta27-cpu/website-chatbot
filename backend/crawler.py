@@ -1,14 +1,20 @@
 from collections import deque
 from urllib.parse import urljoin, urlparse
 import json
+import os
 
 from bs4 import BeautifulSoup
 
 from utils import download_page
 from scraper import scrape_website
 
+from config import (
+    MAX_PAGES,
+    CACHE_FILE
+)
 
-# Crawl these pages first
+
+# Pages we want to crawl first
 PRIORITY_KEYWORDS = [
     "about",
     "service",
@@ -24,7 +30,8 @@ PRIORITY_KEYWORDS = [
     "team",
 ]
 
-# Skip these pages
+
+# Pages we don't need
 SKIP_KEYWORDS = [
     "privacy",
     "terms",
@@ -32,8 +39,8 @@ SKIP_KEYWORDS = [
     "login",
     "signup",
     "register",
-    "feed",
     "rss",
+    "feed",
     "wp-admin",
 ]
 
@@ -43,9 +50,11 @@ def normalize_url(url):
 
 
 def get_priority(url):
+
     url = url.lower()
 
     for index, keyword in enumerate(PRIORITY_KEYWORDS):
+
         if keyword in url:
             return index
 
@@ -56,13 +65,13 @@ def get_priority(url):
 
 
 def extract_links(url):
-    """
-    Extract all valid internal links from one page.
-    """
 
     response = download_page(url)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(
+        response.text,
+        "html.parser"
+    )
 
     base_domain = urlparse(url).netloc
 
@@ -111,19 +120,12 @@ def extract_links(url):
     return links
 
 
-def crawl_website(start_url, max_pages=50):
-    """
-    Crawl a website using Breadth-First Search.
+def crawl_website(
+    start_url,
+    max_pages=MAX_PAGES
+):
 
-    Returns:
-        [
-            {
-                "url": "...",
-                "text": "..."
-            },
-            ...
-        ]
-    """
+    print("\nStarting crawl...\n")
 
     start_url = normalize_url(start_url)
 
@@ -132,7 +134,6 @@ def crawl_website(start_url, max_pages=50):
     queue = deque([start_url])
 
     pages = []
-
     while queue and len(visited) < max_pages:
 
         current_url = queue.popleft()
@@ -142,27 +143,36 @@ def crawl_website(start_url, max_pages=50):
 
         visited.add(current_url)
 
-        print(f"Scraping ({len(visited)}/{max_pages}) : {current_url}")
+        print(
+            f"[{len(visited)}/{max_pages}] Crawling: {current_url}"
+        )
 
         try:
 
-            text = scrape_website(current_url)
+            page_text = scrape_website(current_url)
 
-            pages.append({
-                "url": current_url,
-                "text": text
-            })
+            if page_text.strip():
+
+                pages.append(
+                    {
+                        "url": current_url,
+                        "text": page_text
+                    }
+                )
 
             links = extract_links(current_url)
 
             for link in links:
 
-                if link not in visited and link not in queue:
+                if (
+                    link not in visited
+                    and link not in queue
+                ):
                     queue.append(link)
 
         except Exception as e:
 
-            print(f"Skipped : {current_url}")
+            print(f"Skipped: {current_url}")
 
             print(e)
 
@@ -172,45 +182,86 @@ def crawl_website(start_url, max_pages=50):
     )
 
     print("\n" + "=" * 80)
+
     print(f"Pages Crawled : {len(pages)}")
-    print(f"Characters    : {total_characters:,}")
+
+    print(
+        f"Characters    : {total_characters:,}"
+    )
+
     print("=" * 80)
 
     return pages
 
 
-if __name__ == "__main__":
-
-    website = "https://www.e2msolutions.com"
-
-    pages = crawl_website(
-        website,
-        max_pages=50
-    )
+def save_cache(pages):
 
     with open(
-        "website_content.json",
+        CACHE_FILE,
         "w",
         encoding="utf-8"
-    ) as f:
+    ) as file:
 
         json.dump(
             pages,
-            f,
+            file,
             indent=4,
             ensure_ascii=False
         )
 
-    print("\nSaved to website_content.json")
+    print(
+        f"\nKnowledge base saved to {CACHE_FILE}"
+    )
+
+
+def load_cache():
+
+    if not os.path.exists(CACHE_FILE):
+
+        return None
+
+    with open(
+        CACHE_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+        pages = json.load(file)
+
+    print(
+        f"Loaded {len(pages)} pages from cache."
+    )
+
+    return pages
+if __name__ == "__main__":
+
+    WEBSITE = "https://www.e2msolutions.com"
+
+    pages = crawl_website(
+        WEBSITE,
+        max_pages=MAX_PAGES
+    )
+
+    save_cache(pages)
+
+    print("\n" + "=" * 80)
+    print("CRAWLING COMPLETED")
+    print("=" * 80)
+    print(f"Pages Saved : {len(pages)}")
+    print(f"Cache File  : {CACHE_FILE}")
 
     if pages:
 
-        print("\nPreview\n")
-        print("=" * 80)
+        print("\nFirst Page Preview")
+        print("-" * 80)
 
         print("URL:")
         print(pages[0]["url"])
 
-        print("\nFirst 1500 characters:\n")
+        print("\nPreview:\n")
 
-        print(pages[0]["text"][:1500])
+        print(
+            pages[0]["text"][:1500]
+        )
+
+        print("\n" + "-" * 80)

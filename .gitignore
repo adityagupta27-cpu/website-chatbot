@@ -8,6 +8,7 @@ venv/
 # Environment files
 .env
 backend/.env
+frontend/.env
 
 
 # Node.js

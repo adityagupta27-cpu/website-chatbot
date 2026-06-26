@@ -166,12 +166,23 @@ User Question:
 {question}
 """
 
-    response = model.generate_content(
-        prompt,
-        generation_config=generation_config
-    )
+    try:
 
-    return response.text.strip()
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config
+        )
+
+        return response.text.strip()
+
+    except Exception as e:
+
+        print(f"Gemini Error: {e}")
+
+        return (
+            "⚠️ The AI service is temporarily unavailable. "
+            "Please try again later."
+        )
 
 
 if __name__ == "__main__":

@@ -1,10 +1,10 @@
 import os
-from google.generativeai.types import GenerationConfig
-from retriever import retrieve
-from snippet_extractor import extract_snippets
-
 from dotenv import load_dotenv
+
 import google.generativeai as genai
+from google.generativeai.types import GenerationConfig
+
+from retriever import retrieve
 
 load_dotenv()
 
@@ -16,10 +16,12 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 model = genai.GenerativeModel("gemini-2.5-flash")
+
 generation_config = GenerationConfig(
     temperature=0.3,
-    max_output_tokens=1290,
+    max_output_tokens=4190,
 )
+
 
 def detect_intent(question):
     """
@@ -55,8 +57,9 @@ def detect_intent(question):
         return "summary"
 
     return "normal"
-def get_response_style(intent):
 
+
+def get_response_style(intent):
     styles = {
 
         "list": """
@@ -93,8 +96,12 @@ Use paragraphs if appropriate.
     }
 
     return styles[intent]
+
+
 def ask_llm(question, pages):
-    from retriever import retrieve
+    """
+    Ask Gemini using only the supplied website content.
+    """
 
     relevant_pages = retrieve(
         question,
@@ -106,27 +113,22 @@ def ask_llm(question, pages):
 
     for page in relevant_pages:
 
-        snippet = extract_snippets(
-            question,
-            page
-        )
+        page_text = page["text"][:6000]
 
         context.append(
             f"""
-    Source:
-    {page['url']}
+Source:
+{page['url']}
 
-    {snippet}
-    """
+{page_text}
+"""
         )
 
     website_text = "\n\n".join(context)
-    """
-    Ask Gemini using only the supplied website content.
-    """
-    intent = detect_intent(question)
 
+    intent = detect_intent(question)
     response_style = get_response_style(intent)
+
     prompt = f"""
 You are an AI assistant for a company website.
 
@@ -149,6 +151,10 @@ Answer Guidelines:
 - Keep a professional and readable style.
 - Use Markdown formatting where appropriate.
 
+Formatting Instructions:
+
+{response_style}
+
 Relevant Website Sections:
 
 {website_text}
@@ -161,11 +167,13 @@ User Question:
 """
 
     response = model.generate_content(
-    prompt,
-    generation_config=generation_config
-)
+        prompt,
+        generation_config=generation_config
+    )
 
     return response.text.strip()
+
+
 if __name__ == "__main__":
 
     with open("website_content.txt", "r", encoding="utf-8") as f:

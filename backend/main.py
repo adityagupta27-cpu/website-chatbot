@@ -2,7 +2,32 @@ import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
+from config import (
+    WEBSITE_URL,
+    WEBSITE_NAME,
+    MAX_PAGES,
+    CACHE_FILE
+)
+
+from crawler import (
+    crawl_website,
+    save_cache,
+    load_cache
+)
+
+from llm import ask_llm
+from cache import website_cache
+
+
+# Create FastAPI FIRST
+app = FastAPI(
+    title="Website Chatbot API",
+    version="2.0.0"
+)
+
+# THEN add middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

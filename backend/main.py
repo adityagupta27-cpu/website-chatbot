@@ -1,16 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://website-chatbot.netlify.app",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 from pydantic import BaseModel
 
 from config import WEBSITE_URL, WEBSITE_NAME, MAX_PAGES
@@ -23,11 +12,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Allow React frontend to connect
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "https://website-chatbot.netlify.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,6 +26,7 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     question: str
+
 
 
 @app.get("/")

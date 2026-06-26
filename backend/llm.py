@@ -1,5 +1,7 @@
 import os
 from google.generativeai.types import GenerationConfig
+from retriever import retrieve
+from snippet_extractor import extract_snippets
 
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -15,8 +17,8 @@ genai.configure(api_key=api_key)
 
 model = genai.GenerativeModel("gemini-2.5-flash")
 generation_config = GenerationConfig(
-    temperature=0.2,
-    max_output_tokens=550,
+    temperature=0.3,
+    max_output_tokens=1290,
 )
 
 def detect_intent(question):
@@ -97,13 +99,28 @@ def ask_llm(question, pages):
     relevant_pages = retrieve(
         question,
         pages,
-        top_k=5
+        top_k=6
     )
 
-    website_text = "\n\n".join(
-        page["text"]
-        for page in relevant_pages
-    )
+    context = []
+
+    for page in relevant_pages:
+
+        snippet = extract_snippets(
+            question,
+            page
+        )
+
+        context.append(
+            f"""
+    Source:
+    {page['url']}
+
+    {snippet}
+    """
+        )
+
+    website_text = "\n\n".join(context)
     """
     Ask Gemini using only the supplied website content.
     """
@@ -113,21 +130,30 @@ def ask_llm(question, pages):
     prompt = f"""
 You are an AI assistant for a company website.
 
+Your job is to answer user questions ONLY using the provided website information.
+
 Rules:
 
-1. Answer ONLY using the provided website content.
+1. Use ONLY the information provided below.
+2. Never invent facts or use outside knowledge.
+3. If the answer cannot be found, reply exactly:
+   "I couldn't find that information on the website."
 
-2. Do NOT use outside knowledge.
+Answer Guidelines:
 
-3. If the answer is not found, reply exactly:
+- Write answers that are detailed enough to fully answer the question.
+- Aim for approximately 150–250 words when appropriate.
+- If the answer contains multiple items, use bullet points.
+- Briefly explain each bullet point instead of only listing it.
+- Avoid repeating the same information.
+- Keep a professional and readable style.
+- Use Markdown formatting where appropriate.
 
-I couldn't find that information on the website.
-
-Website Content:
+Relevant Website Sections:
 
 {website_text}
 
---------------------------------------
+--------------------------------------------------
 
 User Question:
 
